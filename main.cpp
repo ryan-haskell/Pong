@@ -18,6 +18,8 @@
 #define FULLSCREEN false
 #define FULLSCREEN_MODE SDL_WINDOW_FULLSCREEN_DESKTOP
 
+#define JOYSTICK_DEAD_ZONE 8000
+
 #define BG_COLOR 0x006699
 
 #define PADDLE_W 25
@@ -89,11 +91,17 @@ int main(int argc, char* argv[])
 	SDL_Surface* paddle1 = NULL;
 	SDL_Surface* paddle2 = NULL;
 	SDL_Surface* ball = NULL;
+	SDL_Joystick* gameController = NULL;
 	
 	Paddle p1(PADDLE1_X,PADDLE1_Y);
 	Paddle p2(PADDLE2_X,PADDLE2_Y);
 	Ball b(BALL_X,BALL_Y);
 
+	SDL_Init(SDL_INIT_JOYSTICK);
+
+	//	Set up controller
+	if( SDL_NumJoysticks() > 0 )
+		gameController = SDL_JoystickOpen(0);
 
 	//	Set up window and surfaces
 	window = SDL_CreateWindow( WINDOW_TITLE, WINDOW_X, WINDOW_Y, WINDOW_W, WINDOW_H, WINDOW_VIS | WINDOW_FULLSCREEN );
@@ -160,6 +168,30 @@ int main(int argc, char* argv[])
 						goto EXIT;
 				}
 			}
+			else if( event.type == SDL_JOYAXISMOTION )
+			{
+				//Motion on controller 0
+				if( event.jaxis.which == 0 )
+				{
+					//Y axis motion
+					if( event.jaxis.axis == 1 )
+					{
+						p1.up = false;
+						p1.down = false;
+
+						//Below of dead zone
+						if( event.jaxis.value < -JOYSTICK_DEAD_ZONE )
+						{
+							p1.up = true;
+						}
+						//Above of dead zone
+						else if( event.jaxis.value > JOYSTICK_DEAD_ZONE )
+						{
+							p1.down =  true;
+						}
+					}
+				}
+			}
 		}
 
 		//	2: Logic
@@ -222,6 +254,10 @@ int main(int argc, char* argv[])
 	paddle2 = NULL;
 	SDL_FreeSurface( ball );
 	ball = NULL;
+
+	//	Remove Joystick
+	SDL_JoystickClose( gameController );
+	gameController = NULL;
 	
 	//	Clean up window and exit
 	SDL_DestroyWindow( window );
